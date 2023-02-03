@@ -1,0 +1,292 @@
+<template>
+    <div>
+                    <div class="col-12 col-md-8 col-xl-9 align-top" ref="webcamContainer">
+                        <div class="loading d-none">
+                                Loading Model
+                                <div class="spinner-border" role="status">
+                                        <span class="sr-only"></span>
+                                </div>
+                        </div>
+                        
+                        <div id="video-container">
+                                <video ref="webcamElement" autoplay muted playsinline></video>
+                        </div>  
+                        <!-- <div id="errorMsg" class="col-12 alert-danger d-none">
+                        Fail to start camera <br>
+                        1. Please allow permission to access camera. <br>
+                        2. If you are browsing through social media built in browsers, look for the ... or browser icon on the right top/bottom corner, and open the page in Sarafi (iPhone)/ Chrome (Android)
+                        </div> -->
+                    </div>
+                        <div style="width: 100%;display: flex;">
+                                <div style="width: 50%;">
+                                        <label class="form-switch">
+                                        <input @change="webcamOnOff" v-model="webcamSwitch" type="checkbox" id="webcam-switch">
+                                        <i></i> Webcam </label>       
+                                </div> 
+                                <!-- <div style="width: 33%;">
+                                        <label class="form-switch disabled">
+                                        <input type="checkbox" disabled id="detection-switch">
+                                        <i></i> Detect Face </label>      
+                                </div>    -->
+                                <div style="width: 50%;">
+                                        <label class="form-switch ">
+                                        <input @change="boxOnOff" v-model="boxSwitch" type="checkbox" id="box-switch">
+                                        <i></i> Bounding Box </label>      
+                                </div>             
+                        </div>
+    </div>
+  </template>
+
+    
+  <script>
+// eslint-disable-next-line
+class Webcam{constructor(e,t="user",s=null,i=null){this._webcamElement=e,this._webcamElement.width=this._webcamElement.width||640,this._webcamElement.height=this._webcamElement.height||.75*this._webcamElement.width,this._facingMode=t,this._webcamList=[],this._streamList=[],this._selectedDeviceId="",this._canvasElement=s,this._snapSoundElement=i}get facingMode(){return this._facingMode}set facingMode(e){this._facingMode=e}get webcamList(){return this._webcamList}get webcamCount(){return this._webcamList.length}get selectedDeviceId(){return this._selectedDeviceId}getVideoInputs(e){return this._webcamList=[],e.forEach(e=>{"videoinput"===e.kind&&this._webcamList.push(e)}),1==this._webcamList.length&&(this._facingMode="user"),this._webcamList}getMediaConstraints(){var e={};return""==this._selectedDeviceId?e.facingMode=this._facingMode:e.deviceId={exact:this._selectedDeviceId},{video:e,audio:!1}}selectCamera(){for(let e of this._webcamList)if("user"==this._facingMode&&e.label.toLowerCase().includes("front")||"enviroment"==this._facingMode&&e.label.toLowerCase().includes("back")){this._selectedDeviceId=e.deviceId;break}}flip(){this._facingMode="user"==this._facingMode?"enviroment":"user",this._webcamElement.style.transform="",this.selectCamera()}async start(e=!0){return new Promise((t,s)=>{this.stop(),navigator.mediaDevices.getUserMedia(this.getMediaConstraints()).then(i=>{this._streamList.push(i),this.info().then(i=>{this.selectCamera(),e?this.stream().then(e=>{t(this._facingMode)}).catch(e=>{s(e)}):t(this._selectedDeviceId)}).catch(e=>{s(e)})}).catch(e=>{s(e)})})}async info(){return new Promise((e,t)=>{navigator.mediaDevices.enumerateDevices().then(t=>{this.getVideoInputs(t),e(this._webcamList)}).catch(e=>{t(e)})})}async stream(){return new Promise((e,t)=>{navigator.mediaDevices.getUserMedia(this.getMediaConstraints()).then(t=>{this._streamList.push(t),this._webcamElement.srcObject=t,"user"==this._facingMode&&(this._webcamElement.style.transform="scale(-1,1)"),this._webcamElement.play(),e(this._facingMode)}).catch(e=>{console.log(e),t(e)})})}stop(){this._streamList.forEach(e=>{e.getTracks().forEach(e=>{e.stop()})})}snap(){if(null!=this._canvasElement){null!=this._snapSoundElement&&this._snapSoundElement.play(),this._canvasElement.height=this._webcamElement.scrollHeight,this._canvasElement.width=this._webcamElement.scrollWidth;let e=this._canvasElement.getContext("2d");return"user"==this._facingMode&&(e.translate(this._canvasElement.width,0),e.scale(-1,1)),e.clearRect(0,0,this._canvasElement.width,this._canvasElement.height),e.drawImage(this._webcamElement,0,0,this._canvasElement.width,this._canvasElement.height),this._canvasElement.toDataURL("image/png")}throw"canvas element is missing"}}
+
+ 
+const modelPath = "/models";
+  export default {
+    name: 'FaceRecognition',
+    components: {
+    },
+    mounted(){
+        this.webcam = new Webcam(this.$refs.webcamElement, 'user');
+        this.$refs.webcamElement.onloadedmetadata = (el) => {
+            console.log("onloadedmetadata");
+            console.log(el.srcElement.scrollWidth);
+            this.displaySize = { width:el.srcElement.scrollWidth, height: el.srcElement.scrollHeight }
+        };
+    },
+  data() {
+    return {
+        webcamSwitch:false,
+        boxSwitch:false,
+        webcam:null,
+        currentStream:null,
+        displaySize:null,
+        convas:null,
+        faceDetection:null
+    };
+  },
+  created(){
+    
+  },
+  methods:{
+    webcamOnOff(){
+        if(this.webcamSwitch){
+            this.webcam.start()
+                .then(result =>{
+                    console.log("webcam started");
+                    console.log(result);
+                    Promise.all([
+                        window.faceapi.nets.tinyFaceDetector.load(modelPath),
+                        window.faceapi.nets.faceLandmark68TinyNet.load(modelPath),
+                        window.faceapi.nets.faceExpressionNet.load(modelPath),
+                        window.faceapi.nets.ageGenderNet.load(modelPath)
+                    ]).then(()=>{
+                        this.createCanvas();
+                        this.startDetection();
+                    })
+                })
+                .catch(err => {
+                    console.log("webcam started err");
+                    console.log(err);
+                });
+        }
+        else {        
+            this.cameraStopped();
+            this.webcam.stop();
+            console.log("webcam stopped");
+            clearInterval(this.faceDetection);
+            if(typeof this.canvas !== "undefined" &&  this.canvas !== null){
+                setTimeout(function() {
+                    this.canvas.getContext('2d').clearRect(0, 0, this.canvas.width, this.canvas.height);
+                }, 1000);
+            }
+        }  
+    },
+    boxOnOff(){
+
+    },
+    createCanvas(){
+        if( document.getElementsByTagName("canvas").length == 0 )
+        {
+            this.canvas = window.faceapi.createCanvasFromMedia(this.$refs.webcamElement);
+            this.$refs.webcamContainer.append(this.canvas);
+            this.canvas.style="position: absolute;top: 0;left: 0;";
+            window.faceapi.matchDimensions(this.canvas, this.displaySize);
+        }
+    },
+    startDetection(){
+        this.faceDetection = setInterval(async () => {
+        const detections = await window.faceapi.detectAllFaces(this.$refs.webcamElement, new window.faceapi.TinyFaceDetectorOptions()).withFaceLandmarks(true).withFaceExpressions().withAgeAndGender()
+        const resizedDetections = window.faceapi.resizeResults(detections, this.displaySize)
+        this.canvas.getContext('2d').clearRect(0, 0, this.canvas.width, this.canvas.height);
+        if(this.boxSwitch){
+            window.faceapi.draw.drawDetections(this.canvas, resizedDetections)
+        }
+        
+        }, 300);
+        },
+    }
+  }
+  </script>
+  
+  <style >
+  #webcam-container {
+    padding: 0;
+  }
+  
+  canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  video {
+    background: black;
+    width: 100%   !important;
+    height: auto  !important;
+    margin: 0;
+    border: 0px;
+    
+  }
+
+  #cameraFlip {
+    width: 32px;
+    height: 32px;
+    margin-left: 10px;
+    position: absolute;
+    cursor: pointer;
+    background-color: transparent;
+    background-position : center center;
+    background-repeat:no-repeat;
+  }
+
+  .loading{
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 300000;
+    border: white 1px;
+    color: white;
+    padding: 75px 26px;
+    font-size: 22px;
+    margin: auto;
+    width: 200px;
+    height: 200px;
+  }
+
+  .spinner-border {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 200px;
+    height: 200px;
+    color: white;
+    z-index:300000;
+    filter: alpha(opacity=80);
+    -moz-opacity: 0.8;
+    opacity: 0.8;   
+  }
+
+  @media screen and (max-width: 575px) {
+    .form-control {
+      height: 40px;
+      margin-bottom: 5px;
+      padding: 15px 0px 15px 10px;
+      border: 0px;
+    }
+  }
+  @media screen and (min-width: 576px) {
+    .form-control {
+      padding-top: 15px;
+      padding-bottom: 15px;
+      height: 60px;
+      margin-bottom: 5px; 
+    }
+  }
+
+  .camerasList {
+    width: 90%;
+  }
+
+  .form-switch {
+    display: inline-block;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  .form-switch i {
+    position: relative;
+    display: inline-block;
+    margin-right: .5rem;
+    width: 46px;
+    height: 26px;
+    background-color: #e6e6e6;
+    border-radius: 23px;
+    vertical-align: text-bottom;
+    transition: all 0.3s linear;
+  }
+  
+  .form-switch i::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    width: 42px;
+    height: 22px;
+    background-color: #fff;
+    border-radius: 11px;
+    transform: translate3d(2px, 2px, 0) scale3d(1, 1, 1);
+    transition: all 0.25s linear;
+  }
+  
+  .form-switch i::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    width: 22px;
+    height: 22px;
+    background-color: #fff;
+    border-radius: 11px;
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.25);
+    transform: translate3d(2px, 2px, 0);
+    transition: all 0.2s ease-in-out;
+  }
+  
+  .form-switch:active i::after {
+    width: 28px;
+    transform: translate3d(2px, 2px, 0);
+  }
+  
+  .form-switch:active input:checked + i::after { transform: translate3d(16px, 2px, 0); }
+  
+  .form-switch input { display: none; }
+  
+  .form-switch input:checked + i { background-color: #4BD763; }
+  
+  .form-switch input:checked + i::before { transform: translate3d(18px, 2px, 0) scale3d(0, 0, 0); }
+  
+  .form-switch input:checked + i::after { transform: translate3d(22px, 2px, 0); }
+
+  .form-switch input:disabled + i { background-color: #eeeeee; cursor: not-allowed; }
+
+  .form-switch input:disabled + i::after {
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.10);
+  }
+
+  .disabled {
+      color: #aaa;
+      cursor: not-allowed;
+  }
+
+  #errorMsg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    padding: 20px;
+    z-index: 999999;
+}
+
+  </style>
