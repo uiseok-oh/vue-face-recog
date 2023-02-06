@@ -1,9 +1,9 @@
 <template>
-  <div style="width: 100%"  >
+  <div style="width: 100%;position: relative;"  >
       <div id="video-container" ref="webcamContainer" style="position: relative;">
         <video ref="webcamElement" autoplay muted playsinline ></video>
       </div>
-      <label class="form-switch" style="position: relative"  v-show="isView">
+      <label class="form-switch"  v-show="isView">
           <input @change="webcamOnOff" value="Computer Science" id="a" v-model="webcamSwitch" type="checkbox" />
           <label class="category" for="a">Computer Science</label>
           <br/>
@@ -190,6 +190,7 @@ export default {
   },
   data() {
     return {
+      size:{height:0,width:0},
       isView:true,
       timeString: "",
       time: 0.0,
@@ -245,7 +246,7 @@ export default {
       if (document.getElementsByTagName("canvas").length == 0) {
         this.canvas = window.faceapi.createCanvasFromMedia(this.$refs.webcamElement);
         this.$refs.webcamContainer.append(this.canvas);
-        this.canvas.style = "position: absolute;height: auto !important;top:0;left: 0;border: 0px;transform: scaleX(-1);z-index:1;";
+        this.canvas.style = "position: absolute;width: 100% !important;height: auto !important;top:0;left: 0; right:0;bottom:0;transform: scaleX(-1);z-index:1;";
       }
     },
     startDetection() {
@@ -289,18 +290,17 @@ video {
   background: black;
   width: 100% !important;
   height: auto !important;
-  position: absolute;
   top:0;
   left:0;
+  right: 0;
+  bottom: 0;
   border: 0px;
   z-index: 0;
 }
-
 h1 {
   background-color: azure;
 }
 .category{
-  color: white;
   font-size: xx-large;
 }
 </style>
