@@ -1,7 +1,7 @@
 <template>
   <div class="home">
     <FaceRecognition ></FaceRecognition>
-    <HelloWorld msg="Welcome to Your Vue.js App"/>
+    <HelloWorld msg="10분마다 기록됩니다."/>
   </div>
 </template>
 

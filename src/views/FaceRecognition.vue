@@ -268,7 +268,8 @@ export default {
           this.transferTime +=activeTime;
           let date = new Date(0);
           date.setSeconds(this.time); // specify value for SECONDS here
-          this.timeString = date.toISOString().substring(11, 19);if(this.transferTime > 30){
+          this.timeString = date.toISOString().substring(11, 19);
+          if(this.transferTime > 30){ //30분 마다 데이터 전송
             this.transferTime =0.0;
             /* 
               여기에 store의 axois로 /timer/member/로 post 값을 보내주면 된다.(비동기로 보내기를 원합니다. 정확한 시간을 위해)
