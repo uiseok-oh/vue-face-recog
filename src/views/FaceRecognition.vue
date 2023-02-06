@@ -1,25 +1,26 @@
 <template>
-  <div style="width: 50%">
-    <div class="col-12 col-md-8 col-xl-9 align-top" ref="webcamContainer">
-      <!-- <div class="loading d-none">
-        Loading Model
-        <div class="spinner-border" role="status">
-          <span class="sr-only"></span>
-        </div>
-      </div> -->
-      <div id="video-container">
-        <video ref="webcamElement" autoplay muted playsinline></video>
+  <div style="width: 100%"  >
+      <div id="video-container" ref="webcamContainer" style="position: relative;">
+        <video ref="webcamElement" autoplay muted playsinline ></video>
       </div>
-    </div>
-    <div style="width: 100%; display: flex">
-      <div style="width: 50%">
-        <label class="form-switch">
-          <input @change="webcamOnOff" v-model="webcamSwitch" type="checkbox" id="webcam-switch" />
-          <i></i> Webcam
-        </label>
-      </div>
-    </div>
-    <input v-model="timeString" readonly />
+      <label class="form-switch" style="position: relative"  v-show="isView">
+          <input @change="webcamOnOff" value="Computer Science" id="a" v-model="webcamSwitch" type="checkbox" />
+          <label class="category" for="a">Computer Science</label>
+          <br/>
+          <input @change="webcamOnOff" value="DataBase" id="b" v-model="webcamSwitch" type="checkbox" />
+          <label class="category" for="b">DataBase</label>
+          <br/>
+          <input @change="webcamOnOff" value="etc" id="c" v-model="webcamSwitch" type="checkbox" />
+          <label class="category" for="c">etc</label>
+          <br/>
+          <input @change="webcamOnOff" value="Frontend" id="d" v-model="webcamSwitch" type="checkbox" />
+          <label class="category" for="d">Frontend</label>
+          <br/>
+          <input @change="webcamOnOff" value="Backend" id="e" v-model="webcamSwitch" type="checkbox" />
+          <label class="category" for="e">Backend</label>
+          <br/>
+      </label>
+      <h1 style="position: relative; z-index: 2;">{{ timeString }}</h1>
   </div>
 </template>
 
@@ -174,6 +175,7 @@ class Webcam {
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 const modelPath = "/models";
+const activeTime = 0.23;
 
 export default {
   name: "FaceRecognition",
@@ -188,9 +190,11 @@ export default {
   },
   data() {
     return {
+      isView:true,
       timeString: "",
       time: 0.0,
-      webcamSwitch: false,
+      transferTime : 0.0,
+      webcamSwitch: [],
       boxSwitch: false,
       webcam: null,
       currentStream: null,
@@ -202,7 +206,9 @@ export default {
   created() {},
   methods: {
     webcamOnOff() {
-      if (this.webcamSwitch) {
+      if (this.webcamSwitch.length > 0) {
+        this.isView=false;
+        console.log(this.webcamSwitch[0]);
         this.webcam
           .start()
           .then((result) => {
@@ -239,32 +245,67 @@ export default {
       if (document.getElementsByTagName("canvas").length == 0) {
         this.canvas = window.faceapi.createCanvasFromMedia(this.$refs.webcamElement);
         this.$refs.webcamContainer.append(this.canvas);
-        this.canvas.style = "position: absolute;top: 0;left: 0;transform: scaleX(-1);";
-        window.faceapi.matchDimensions(this.canvas, this.displaySize);
+        this.canvas.style = "position: absolute;height: auto !important;top:0;left: 0;border: 0px;transform: scaleX(-1);z-index:1;";
       }
     },
     startDetection() {
       this.faceDetection = setInterval(async () => {
+        // let start = new Date();
+        
+        this.displaySize = { width: this.$refs.webcamElement.scrollWidth, height: this.$refs.webcamElement.scrollHeight };
+        window.faceapi.matchDimensions(this.canvas, this.displaySize);
         const detections = await window.faceapi
-          .detectAllFaces(this.$refs.webcamElement, new window.faceapi.TinyFaceDetectorOptions())
-          .withFaceExpressions();
+          .detectAllFaces(this.$refs.webcamElement, new window.faceapi.TinyFaceDetectorOptions());
+          // .withFaceExpressions();
         const resizedDetections = window.faceapi.resizeResults(detections, this.displaySize);
         this.canvas.getContext("2d").clearRect(0, 0, this.canvas.width, this.canvas.height);
 
         window.faceapi.draw.drawDetections(this.canvas, resizedDetections);
 
         if (detections.length > 0) {
-          this.time += 0.23;
+          this.time += activeTime;
+          this.transferTime +=activeTime;
           let date = new Date(0);
           date.setSeconds(this.time); // specify value for SECONDS here
-          this.timeString = date.toISOString().substring(11, 19);
+          this.timeString = date.toISOString().substring(11, 19);if(this.transferTime > 30){
+            this.transferTime =0.0;
+            /* 
+              여기에 store의 axois로 /timer/member/로 post 값을 보내주면 된다.(비동기로 보내기를 원합니다. 정확한 시간을 위해)
+              category 는 this.webcamSwitch[0]
+            */
+          }
         }
+
+        
+        // let last = new Date();
+        // console.log(last - start);
       }, 300);
     },
   },
 };
 </script>
+<style scoped>
+video {
+  background: black;
+  width: 100% !important;
+  height: auto !important;
+  position: absolute;
+  top:0;
+  left:0;
+  border: 0px;
+  z-index: 0;
+}
 
+h1 {
+  background-color: azure;
+}
+.category{
+  color: white;
+  font-size: xx-large;
+}
+</style>
+
+<!-- 
 <style>
 #webcam-container {
   padding: 0;
@@ -434,4 +475,4 @@ video {
   padding: 20px;
   z-index: 999999;
 }
-</style>
+</style> -->
